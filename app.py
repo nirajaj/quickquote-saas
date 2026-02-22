@@ -78,21 +78,33 @@ def handle_payment_success(email):
         time.sleep(2)
         st.rerun()
 
-# --- 5. PDF ENGINE ---
+# --- 5. PDF ENGINE (V2 WITH NOTES SECTION) ---
 class ProPDF(FPDF):
     def footer(self):
         self.set_y(-15); self.set_font('Arial', 'I', 8); self.set_text_color(128); self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
 def create_pro_pdf(company_name, client_data):
     pdf = ProPDF(); pdf.add_page()
+    
+    # Header Banner
     pdf.set_fill_color(30, 58, 138); pdf.rect(0, 0, 210, 40, 'F')
+    
+    # Company & Invoice Info
     pdf.set_font("Arial", 'B', 24); pdf.set_text_color(255); pdf.set_xy(10, 10); pdf.cell(100, 15, company_name, 0, 0, 'L')
     pdf.set_font("Arial", 'B', 16); pdf.set_xy(150, 10); pdf.cell(50, 10, "INVOICE", 0, 1, 'R')
     pdf.set_font("Arial", '', 10); pdf.set_xy(150, 20); pdf.cell(50, 5, f"#{random.randint(1000, 9999)}", 0, 1, 'R')
     pdf.set_xy(150, 25); pdf.cell(50, 5, str(datetime.date.today()), 0, 1, 'R')
+    
+    # Bill To
     pdf.set_y(50); pdf.set_text_color(30, 58, 138); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 8, "BILL TO:", 0, 1)
-    pdf.set_text_color(0); pdf.set_font("Arial", '', 11); pdf.cell(0, 6, client_data.get('client_name', 'Customer'), 0, 1); pdf.ln(10)
-    pdf.set_font("Arial", 'B', 10); pdf.set_fill_color(243, 244, 246); pdf.cell(110, 10, "  Description", 1, 0, 'L', 1); pdf.cell(20, 10, "Qty", 1, 0, 'C', 1); pdf.cell(30, 10, "Price", 1, 0, 'R', 1); pdf.cell(30, 10, "Total", 1, 1, 'R', 1)
+    pdf.set_text_color(0); pdf.set_font("Arial", '', 11); 
+    pdf.cell(0, 6, client_data.get('client_name', 'Valued Customer'), 0, 1); pdf.ln(10)
+    
+    # Table Header
+    pdf.set_font("Arial", 'B', 10); pdf.set_fill_color(243, 244, 246); pdf.set_draw_color(209, 213, 219)
+    pdf.cell(110, 10, "  Description", 1, 0, 'L', 1); pdf.cell(20, 10, "Qty", 1, 0, 'C', 1); pdf.cell(30, 10, "Price", 1, 0, 'R', 1); pdf.cell(30, 10, "Total", 1, 1, 'R', 1)
+    
+    # Table Rows
     pdf.set_font("Arial", '', 10); total_sum = 0
     for item in client_data.get('items', []):
         try:
@@ -103,8 +115,27 @@ def create_pro_pdf(company_name, client_data):
             pdf.cell(30, 10, f"${p:,.2f}", 1, 0, 'R')
             pdf.cell(30, 10, f"${t:,.2f}", 1, 1, 'R')
         except: continue
-    pdf.ln(5); pdf.set_font("Arial", 'B', 14); pdf.set_text_color(30, 58, 138); pdf.cell(0, 10, f"TOTAL: ${total_sum:,.2f}  ", 0, 1, 'R')
-    pdf.ln(10); pdf.set_text_color(0); pdf.set_font("Arial", 'B', 10); pdf.cell(0, 8, "NOTES:"); pdf.ln(5); pdf.set_font("Arial", '', 9); pdf.multi_cell(0, 5, client_data.get('note', 'Thank you!'))
+    
+    # Total Box
+    pdf.ln(5); pdf.set_font("Arial", 'B', 14); pdf.set_text_color(30, 58, 138)
+    pdf.cell(160, 12, "TOTAL DUE:  ", 0, 0, 'R')
+    pdf.cell(30, 12, f"${total_sum:,.2f}", 0, 1, 'R')
+    
+    # --- NOTES SECTION (THE FIX) ---
+    pdf.ln(15)
+    pdf.set_draw_color(30, 58, 138); pdf.line(10, pdf.get_y(), 200, pdf.get_y()) # separator
+    pdf.ln(5)
+    pdf.set_text_color(0); pdf.set_font("Arial", 'B', 10); pdf.cell(0, 8, "PAYMENT INSTRUCTIONS:", 0, 1)
+    pdf.set_font("Arial", '', 9); pdf.set_text_color(80)
+    pdf.cell(0, 5, f"Please make checks payable to: {company_name}", 0, 1)
+    pdf.cell(0, 5, "Bank: Business Account Details Provided Upon Request", 0, 1)
+    
+    pdf.ln(5); pdf.set_font("Arial", 'B', 10); pdf.set_text_color(0); pdf.cell(0, 8, "ADDITIONAL NOTES:", 0, 1)
+    pdf.set_font("Arial", 'I', 9); pdf.set_text_color(80)
+    
+    note_text = client_data.get('note', "Thank you for your business! We appreciate your support.")
+    pdf.multi_cell(0, 5, note_text)
+    
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 # --- 6. THE LOGIN SCREEN ---
@@ -113,59 +144,26 @@ if not st.session_state.user:
     with col2:
         st.markdown("<h1 style='text-align: center;'>⚡ QuickQuote</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #666;'>Professional AI Invoicing SaaS</p>", unsafe_allow_html=True)
-        
         try:
-            # 1. GET THE LIVE URL AUTOMATICALLY
-            # This handles typos in the URL automatically
-            current_url = "https://inovicecreatefree.streamlit.app" 
-            
+            # LIVE URL (MATCHING YOUR TYPO FOR SUCCESS)
+            LIVE_URL = "https://inovicecreatefree.streamlit.app"
             auth_res = supabase.auth.sign_in_with_oauth({
                 "provider": "google",
-                "options": {
-                    "redirect_to": current_url, 
-                    "flow_type": "pkce"
-                }
+                "options": {"redirect_to": LIVE_URL, "flow_type": "pkce"}
             })
-            google_url = auth_res.url
-            
-            # 2. THE NEW TAB BUTTON (target="_blank")
-            # We use target="_blank" because Streamlit's sandbox 
-            # often blocks target="_top" for security.
-            st.markdown(f'''
-                <a href="{google_url}" target="_blank" style="text-decoration: none;">
-                    <div style="
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        background-color: white;
-                        color: #757575;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        padding: 10px 24px;
-                        cursor: pointer;
-                        font-family: 'Roboto', sans-serif;
-                        font-weight: 500;
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-                    ">
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px; margin-right:12px;">
-                        Sign in with Google
-                    </div>
-                </a>
-                <p style="text-align: center; font-size: 12px; color: #999; margin-top: 10px;">
-                    (Opens in a new tab)
-                </p>
-            ''', unsafe_allow_html=True)
-            
+            # TARGET _BLANK TO BYPASS SANDBOX BLOCK
+            st.markdown(f'''<a href="{auth_res.url}" target="_blank" class="google-auth-btn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px; margin-right:12px;">
+                Sign in with Google</a>
+                <p style="text-align:center; font-size:10px; color:#999; margin-top:5px;">(Opens in new tab)</p>''', unsafe_allow_html=True)
             st.markdown("<div class='support-text'>Support: nirajaj133@gmail.com</div>", unsafe_allow_html=True)
-        except Exception as e:
-            st.error(f"Configuration Error: {e}")
-            
+        except Exception as e: st.error(f"Error: {e}")
     st.stop()
 
 # --- 7. MAIN DASHBOARD ---
 handle_payment_success(st.session_state.user)
 user_info = get_user_data(st.session_state.user)
-credits, plan = user_info['credits'], user_info['plan']
+credits = user_info['credits']
 
 with st.sidebar:
     st.write(f"👤 **{st.session_state.user}**")
@@ -205,7 +203,11 @@ if st.button("🚀 Generate Professional PDF (-1 Credit)"):
         with st.spinner("AI Accountant working..."):
             update_credits(st.session_state.user, credits - 1)
             client = Groq(api_key=groq_key)
-            prompt = f"""Act as an accountant. Extract UNIT PRICES from: "{final_text}". Do NOT do math. Return ONLY JSON: {{ "client_name": "Name", "items": [{{"description": "Item", "quantity": 1, "price": 0}}], "note": "Note" }}"""
+            # UPDATED PROMPT TO INCLUDE NOTE
+            prompt = f"""Act as a professional accountant. Extract invoice data from: "{final_text}". 
+            RULES: 1. Extract UNIT PRICES only. 2. Do NOT multiply. 3. Generate a short polite professional note for the customer.
+            Return ONLY JSON: {{ "client_name": "Name", "items": [{{"description": "Item", "quantity": 1, "price": 0}}], "note": "Professional message" }}"""
+            
             res = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role":"user", "content": prompt}])
             try:
                 raw = res.choices[0].message.content
@@ -214,4 +216,3 @@ if st.button("🚀 Generate Professional PDF (-1 Credit)"):
                 st.balloons(); st.success("Invoice Ready!")
                 st.download_button("📥 Download PDF", pdf, "Invoice.pdf", "application/pdf")
             except: st.error("AI Error. Try again.")
-
