@@ -11,11 +11,25 @@ import io
 
 # --- 1. SEO & PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="QuickQuote - AI Voice Invoice Generator",
+    page_title="QuickQuote | Best Free AI Voice Invoice Generator for Contractors",
     page_icon="⚡",
     layout="centered",
-    initial_sidebar_state="collapsed"
+    menu_items={
+        'Get Help': 'mailto:nirajaj133@gmail.com',
+        'About': "QuickQuote is the world's fastest AI voice-to-invoice tool for small businesses and contractors."
+    }
 )
+
+# SEO Hidden Keywords (Helps Google find you for specific words)
+st.markdown("""
+    <div style="display:none;">
+        <h1>Invoice Generator</h1>
+        <h2>Free Invoice Maker</h2>
+        <h2>AI Voice Invoice</h2>
+        <p>Create professional invoices for plumbing, landscaping, construction, and electrical work using just your voice. 
+        Convert voice to PDF invoice instantly with QuickQuote AI.</p>
+    </div>
+""", unsafe_allow_html=True)
 
 # Professional CSS
 st.markdown("""
@@ -208,3 +222,4 @@ if st.button("🚀 Generate Professional PDF (-1 Credit)"):
                 st.balloons(); st.success("Invoice Ready!")
                 st.download_button("📥 Download PDF Now", pdf, f"Invoice_{random.randint(100,999)}.pdf", "application/pdf")
             except: st.error("AI Error. Please try typing details manually.")
+
