@@ -208,7 +208,7 @@ if not st.session_state.user:
             
             # THE UPDATED BUTTON HTML
             st.markdown(f'''
-                <a href="{google_url}" target="_self" class="google-auth-btn">
+                <a href="{google_url}" target="_top" class="google-auth-btn">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="google-logo">
                     Sign in with Google
                 </a>
@@ -356,3 +356,4 @@ if st.button(f"📄 Create Invoice (-1 Credit)"):
             except Exception as e:
 
                 st.error(f"Parsing Error: {e}. Please check your text input.")
+
