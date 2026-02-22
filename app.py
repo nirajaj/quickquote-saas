@@ -10,16 +10,11 @@ import time
 import io
 
 # --- 1. SEO & PAGE CONFIGURATION ---
-# This part helps Google Search find your website
 st.set_page_config(
     page_title="QuickQuote - AI Voice Invoice Generator",
     page_icon="⚡",
     layout="centered",
-    initial_sidebar_state="collapsed",
-    menu_items={
-        'Get Help': 'mailto:nirajaj133@gmail.com',
-        'About': "# QuickQuote\nProfessional AI Invoicing for contractors."
-    }
+    initial_sidebar_state="collapsed"
 )
 
 # Professional CSS
@@ -27,7 +22,7 @@ st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    .stButton>button {width: 100%; border-radius: 8px; height: 3.5em; background-color: #2563EB; color: white; font-weight: bold; border: none; transition: 0.3s;}
+    .stButton>button {width: 100%; border-radius: 8px; height: 3em; background-color: #2563EB; color: white; font-weight: bold; border: none; transition: 0.3s;}
     .stButton>button:hover {background-color: #1D4ED8; transform: scale(1.01);}
     .google-auth-btn {
         display: flex; align-items: center; justify-content: center;
@@ -51,7 +46,6 @@ groq_key = st.secrets["groq"]["key"]
 # --- 3. AUTHENTICATION ---
 if 'user' not in st.session_state: st.session_state.user = None
 
-# Handle URL Redirect from Google
 if "code" in st.query_params:
     try:
         res = supabase.auth.exchange_code_for_session({"auth_code": st.query_params["code"]})
@@ -73,7 +67,7 @@ def update_credits(email, new_amount, new_plan=None):
     if new_plan: data["plan"] = new_plan
     supabase.table("user_credits").update(data).eq("email", email).execute()
 
-# --- 5. PDF GENERATOR ---
+# --- 5. PDF ENGINE ---
 class ProPDF(FPDF):
     def footer(self):
         self.set_y(-15); self.set_font('Arial', 'I', 8); self.set_text_color(128)
@@ -86,26 +80,36 @@ def create_pro_pdf(company_name, client_data):
     pdf.set_font("Arial", 'B', 16); pdf.set_xy(150, 10); pdf.cell(50, 10, "INVOICE", 0, 1, 'R')
     pdf.set_font("Arial", '', 10); pdf.set_xy(150, 20); pdf.cell(50, 5, f"#{random.randint(1000, 9999)}", 0, 1, 'R')
     pdf.set_xy(150, 25); pdf.cell(50, 5, str(datetime.date.today()), 0, 1, 'R')
-    pdf.set_y(50); pdf.set_text_color(30, 58, 138); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 8, "BILL TO:", 0, 1)
-    pdf.set_text_color(0); pdf.set_font("Arial", '', 11); pdf.cell(0, 6, client_data.get('client_name', 'Valued Customer'), 0, 1); pdf.ln(10)
+    
+    pdf.set_y(50); pdf.set_text_color(30, 58, 138); pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 8, "BILL TO:", 0, 1)
+    pdf.set_text_color(0); pdf.set_font("Arial", '', 11)
+    pdf.cell(0, 6, client_data.get('client_name', 'Valued Customer'), 0, 1); pdf.ln(10)
+    
     pdf.set_font("Arial", 'B', 10); pdf.set_fill_color(243, 244, 246); pdf.set_draw_color(209, 213, 219)
     pdf.cell(110, 10, "  Description", 1, 0, 'L', 1); pdf.cell(20, 10, "Qty", 1, 0, 'C', 1); pdf.cell(30, 10, "Price", 1, 0, 'R', 1); pdf.cell(30, 10, "Total", 1, 1, 'R', 1)
+    
     pdf.set_font("Arial", '', 10); total_sum = 0
     for item in client_data.get('items', []):
         try:
-            q, p = float(item.get('quantity', 1)), float(item.get('price', 0))
-            t = q * p; total_sum += t
+            q = float(item.get('quantity', 1))
+            p = float(item.get('price', 0))
+            t = q * p
+            total_sum += t
             pdf.cell(110, 10, f"  {item.get('description')}", 1)
             pdf.cell(20, 10, str(int(q)), 1, 0, 'C')
             pdf.cell(30, 10, f"${p:,.2f}", 1, 0, 'R')
             pdf.cell(30, 10, f"${t:,.2f}", 1, 1, 'R')
         except: continue
-    pdf.ln(5); pdf.set_font("Arial", 'B', 14); pdf.set_text_color(30, 58, 138); pdf.cell(160, 12, "TOTAL DUE:  ", 0, 0, 'R'); pdf.cell(30, 12, f"${total_sum:,.2f}", 0, 1, 'R')
+    
+    pdf.ln(5); pdf.set_font("Arial", 'B', 14); pdf.set_text_color(30, 58, 138)
+    pdf.cell(160, 12, "TOTAL DUE:  ", 0, 0, 'R'); pdf.cell(30, 12, f"${total_sum:,.2f}", 0, 1, 'R')
     pdf.ln(15); pdf.set_draw_color(30, 58, 138); pdf.line(10, pdf.get_y(), 200, pdf.get_y()); pdf.ln(5)
     pdf.set_text_color(0); pdf.set_font("Arial", 'B', 10); pdf.cell(0, 8, "PAYMENT INSTRUCTIONS:", 0, 1)
     pdf.set_font("Arial", '', 9); pdf.set_text_color(80); pdf.cell(0, 5, f"Account: {company_name}", 0, 1); pdf.cell(0, 5, "Terms: Payment due upon receipt.", 0, 1)
     pdf.ln(5); pdf.set_font("Arial", 'B', 10); pdf.set_text_color(0); pdf.cell(0, 8, "ADDITIONAL NOTES:", 0, 1)
-    pdf.set_font("Arial", 'I', 9); pdf.set_text_color(80); pdf.multi_cell(0, 5, client_data.get('note', "Thank you for your business!"))
+    pdf.set_font("Arial", 'I', 9); pdf.set_text_color(80)
+    pdf.multi_cell(0, 5, client_data.get('note', "Thank you!"))
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 # --- 6. LOGIN SCREEN ---
@@ -115,7 +119,6 @@ if not st.session_state.user:
         st.markdown("<h1 style='text-align: center;'>⚡ QuickQuote</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #666;'>Instant AI Professional Invoices</p>", unsafe_allow_html=True)
         try:
-            # Match your typo in the URL
             LIVE_URL = "https://inovicecreatefree.streamlit.app"
             auth_url = supabase.auth.sign_in_with_oauth({"provider": "google", "options": {"redirect_to": LIVE_URL, "flow_type": "pkce"}}).url
             st.markdown(f'<a href="{auth_url}" target="_blank" class="google-auth-btn"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px; margin-right:12px;">Sign in with Google</a>', unsafe_allow_html=True)
@@ -125,7 +128,6 @@ if not st.session_state.user:
     st.stop()
 
 # --- 7. MAIN DASHBOARD ---
-# Payment Hook
 if st.query_params.get("payment") == "success":
     u = get_user_data(st.session_state.user)
     update_credits(st.session_state.user, u['credits'] + 400, "Pro Monthly")
@@ -149,30 +151,26 @@ if credits <= 0:
 company_name = st.text_input("Your Business Name", "My Company Inc.")
 if 'notes' not in st.session_state: st.session_state.notes = ""
 
-# Example
 if st.button("📝 Load Example (John Doe)"):
     st.session_state.notes = "Client: John Doe. 5 LED lights at $80 each. 10 hours labor at $95 per hour. $50 for materials."
     st.rerun()
 
-# Hybrid Input
 with st.container(border=True):
     col1, col2 = st.columns([1, 5])
     with col1: audio = mic_recorder(start_prompt="🎤 Speak", stop_prompt="🛑 Stop", key='recorder')
     
     if audio:
-        # Check if this is a new recording to prevent double processing
         if "last_id" not in st.session_state or st.session_state.last_id != audio['id']:
             with st.spinner("⚡ AI Listening..."):
                 try:
                     client = Groq(api_key=groq_key)
-                    # Instant Streaming (no file saving)
                     text = client.audio.transcriptions.create(file=("audio.wav", audio['bytes']), model="whisper-large-v3-turbo", response_format="text")
                     st.session_state.notes = text
                     st.session_state.last_id = audio['id']
                     st.rerun()
                 except Exception as e: st.error(f"Mic Error: {e}")
     
-    final_text = st.text_area("Job Details:", value=st.session_state.notes, height=150, help="Speak or type here.")
+    final_text = st.text_area("Job Details:", value=st.session_state.notes, height=150)
     st.session_state.notes = final_text
 
 if st.button("🚀 Generate Professional PDF (-1 Credit)"):
@@ -181,9 +179,26 @@ if st.button("🚀 Generate Professional PDF (-1 Credit)"):
         with st.spinner("AI Accountant working..."):
             update_credits(st.session_state.user, credits - 1)
             client = Groq(api_key=groq_key)
-            prompt = f"""Act as a professional accountant. Extract invoice data from: "{final_text}". 
-            RULES: 1. Extract UNIT PRICES only. 2. Do NOT multiply. 3. Generate a short polite professional note for the customer.
-            Return ONLY RAW JSON: {{ "client_name": "Name", "items": [{{"description": "Item", "quantity": 1, "price": 0}}], "note": "Professional message" }}"""
+            
+            # --- THE FIXED PROMPT ---
+            prompt = f"""
+            You are a professional accounting bot. Extract invoice data from the following text: "{final_text}"
+            
+            CRITICAL INSTRUCTIONS:
+            1. Identify the 'quantity' correctly. If the text says "5 people", quantity is 5. If it says "10 hours", quantity is 10.
+            2. Identify the 'unit price' correctly. If it says "$5 per person", the price is 5.
+            3. DO NOT multiply the numbers yourself. Put the single unit price in 'price' and the count in 'quantity'.
+            4. If no quantity is mentioned, assume 1.
+            
+            Return ONLY RAW JSON:
+            {{
+                "client_name": "Name of client",
+                "items": [
+                    {{"description": "Short description", "quantity": 5, "price": 10.00}}
+                ],
+                "note": "A polite professional closing note."
+            }}
+            """
             
             res = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role":"user", "content": prompt}])
             try:
