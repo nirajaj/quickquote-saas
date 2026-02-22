@@ -200,7 +200,7 @@ if not st.session_state.user:
             auth_response = supabase.auth.sign_in_with_oauth({
                 "provider": "google",
                 "options": {
-                    "redirect_to": "http://localhost:8501", 
+                    "redirect_to": "https://inovicecreatefree.streamlit.app/", 
                     "flow_type": "pkce"
                 }
             })
@@ -354,4 +354,5 @@ if st.button(f"📄 Create Invoice (-1 Credit)"):
                     st.error("AI Error: Could not generate valid invoice data. Please try again.")
 
             except Exception as e:
+
                 st.error(f"Parsing Error: {e}. Please check your text input.")
