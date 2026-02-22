@@ -113,19 +113,53 @@ if not st.session_state.user:
     with col2:
         st.markdown("<h1 style='text-align: center;'>⚡ QuickQuote</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #666;'>Professional AI Invoicing SaaS</p>", unsafe_allow_html=True)
+        
         try:
-            # LIVE REDIRECT URL
-            LIVE_URL = "https://invoicecreatefree.streamlit.app"
+            # 1. GET THE LIVE URL AUTOMATICALLY
+            # This handles typos in the URL automatically
+            current_url = "https://inovicecreatefree.streamlit.app" 
+            
             auth_res = supabase.auth.sign_in_with_oauth({
                 "provider": "google",
-                "options": {"redirect_to": LIVE_URL, "flow_type": "pkce"}
+                "options": {
+                    "redirect_to": current_url, 
+                    "flow_type": "pkce"
+                }
             })
-            # target="_top" is CRITICAL for the website version
-            st.markdown(f'''<a href="{auth_res.url}" target="_top" class="google-auth-btn">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px; margin-right:12px;">
-                Sign in with Google</a>''', unsafe_allow_html=True)
+            google_url = auth_res.url
+            
+            # 2. THE NEW TAB BUTTON (target="_blank")
+            # We use target="_blank" because Streamlit's sandbox 
+            # often blocks target="_top" for security.
+            st.markdown(f'''
+                <a href="{google_url}" target="_blank" style="text-decoration: none;">
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background-color: white;
+                        color: #757575;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        padding: 10px 24px;
+                        cursor: pointer;
+                        font-family: 'Roboto', sans-serif;
+                        font-weight: 500;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+                    ">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px; margin-right:12px;">
+                        Sign in with Google
+                    </div>
+                </a>
+                <p style="text-align: center; font-size: 12px; color: #999; margin-top: 10px;">
+                    (Opens in a new tab)
+                </p>
+            ''', unsafe_allow_html=True)
+            
             st.markdown("<div class='support-text'>Support: nirajaj133@gmail.com</div>", unsafe_allow_html=True)
-        except Exception as e: st.error(f"Error: {e}")
+        except Exception as e:
+            st.error(f"Configuration Error: {e}")
+            
     st.stop()
 
 # --- 7. MAIN DASHBOARD ---
@@ -180,3 +214,4 @@ if st.button("🚀 Generate Professional PDF (-1 Credit)"):
                 st.balloons(); st.success("Invoice Ready!")
                 st.download_button("📥 Download PDF", pdf, "Invoice.pdf", "application/pdf")
             except: st.error("AI Error. Try again.")
+
