@@ -196,21 +196,40 @@ if not st.session_state.user:
             </style>
         """, unsafe_allow_html=True)
         
+        # --- 6. THE LOGIN SCREEN ---
+# Find this section in your app.py
+
         try:
+            # IMPORTANT: The redirect_to MUST match your Supabase "Site URL" exactly
             auth_response = supabase.auth.sign_in_with_oauth({
                 "provider": "google",
                 "options": {
-                    "redirect_to": "https://inovicecreatefree.streamlit.app/", 
+                    "redirect_to": "https://invoicecreatefree.streamlit.app", 
                     "flow_type": "pkce"
                 }
             })
             google_url = auth_response.url
             
-            # THE UPDATED BUTTON HTML
+            # THE BUTTON (We use target="_top" to force it to open in the full window)
             st.markdown(f'''
-                <a href="{google_url}" target="_top" class="google-auth-btn">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="google-logo">
-                    Sign in with Google
+                <a href="{google_url}" target="_top" style="text-decoration: none;">
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background-color: white;
+                        color: #757575;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        padding: 10px;
+                        cursor: pointer;
+                        font-family: 'Roboto', sans-serif;
+                        font-weight: 500;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                    ">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" style="margin-right:10px;">
+                        Sign in with Google
+                    </div>
                 </a>
             ''', unsafe_allow_html=True)
             
@@ -356,4 +375,5 @@ if st.button(f"📄 Create Invoice (-1 Credit)"):
             except Exception as e:
 
                 st.error(f"Parsing Error: {e}. Please check your text input.")
+
 
